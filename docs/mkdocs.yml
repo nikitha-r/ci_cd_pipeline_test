@@ -11,6 +11,7 @@ nav:
   - Development: development.md
   - Deployment: deployment.md
   - Release notes: release_notes.md
+  - Commands: cmdz.md
   
 # Theme
 theme:
