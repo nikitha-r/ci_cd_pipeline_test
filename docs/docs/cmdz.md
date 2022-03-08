@@ -1,9 +1,12 @@
 ## Allow the database IP
 
+```bash
 az postgres server firewall-rule create --resource-group ABI-MT-MROI-DEV-RG-Global-Non-Prod --server-name abi-mt-mroi-gb-dev-postgresdb --name AllowSingleIpAddress --start-ip-address 106.196.17.180 --end-ip-address 106.196.17.180
+```
 
 ## Kubectl commands
 
+```bash
 kubectl get configmaps
 kubectl get secrets
 kubectl get pods
@@ -14,9 +17,11 @@ kubectl describe pod scaledjob_name
 kubectl logs pod/servicebus-queue-job-rkgpw-rb4jp
 kubectl edit secrets servicebus-job-secret
 kubectl get scaledjobs --all-namespaces
+```
 
 ## Data IO Library 
 
+```bash
 (dockerenv) C:\Users\40103441\Desktop\projects\std\data-io-app\data1>
 	typer data_io_app.py run upload_all --path C:\Users\40103441\Desktop\projects\std\data-io-app\data1\testmd
 
@@ -27,10 +32,11 @@ kubectl get scaledjobs --all-namespaces
 
 (dockerenv) C:\Users\40103441\Desktop\projects\std\mt-utils-lib\mt_utils_lib>
 	typer example.py run upload_all --path C:\Users\40103441\Desktop\projects\std\testdir\onlyfortesting
-
+```
 
 #### Packaging
 
+```bash
 (okenv) C:\Users\40103441\Desktop\projects\std\check>
 	poetry run check download_all
 	poetry run check download_all --path C:\Users\40103441\Desktop\projects\std\testdir  
@@ -48,9 +54,10 @@ kubectl get scaledjobs --all-namespaces
 C:\Users\40103441\AppData\Local\pypoetry\Cache\virtualenvs
 
 (okenv) C:\Users\40103441\Desktop\projects\std\mt-utils-lib\mt_utils_lib>typer example.py run download_all --path C:\Users\40103441\Desktop\projects\std\testdir
-
+```
 
 #### Data io library errors
+```bash
 typer==0.3.2
 typer-cli==0.0.12
 
@@ -74,9 +81,10 @@ Resolving dependencies...
       243│         results = dict(
       244│             depth_first_search(
       245│                 PackageNode(self._package, packages), aggregate_package_nodes
-
+```
 ## Docker commands
 
+```bash
 docker build -t abimtmroigbdevacr.azurecr.io/mt-mmm-be-api:latest .
 docker push abimtmroigbdevacr.azurecr.io/mt-mmm-be-api:latest
 
@@ -128,20 +136,28 @@ git remote set-head origin -a
 
 git fetch && git checkout -b wrong-branchtest
 git push -u origin wrong-branchtest
+```
 
 ## Loadtest
+
+```bash
 locust -f locustfile.py --headless -u 10 -r 1  --html=MMM_AKS_Report.html
+```
 
 ## GRA login
 
+```bash
 url: https://globalresourceallocator.wowlabz.com/
 
 username: china.user@abi.com
 password: default@123
+```
 
 ## Some links
+```bash
 https://akhilsharma.work/how-to-pass-environment-variables-in-azure-webapps/
 https://docs.microsoft.com/en-us/azure/app-service/faq-app-service-linux#multi-container-with-docker-compose
 
 https://github.com/nikitha-r/ci_cd_pipeline_test.git
 git push https://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@github.com/nikitha-r/ci_cd_pipeline_test.git
+```
