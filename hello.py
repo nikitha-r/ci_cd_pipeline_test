@@ -10,6 +10,12 @@ def add():
     print("Add")
 
 
+
+def sub():
+    print("sub")
+
+
 hello()
 releasedraft()
 add()
+sub()
