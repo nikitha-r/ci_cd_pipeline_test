@@ -12,3 +12,4 @@ def mul(a, b):
 
 add(10, 10)
 sub(10, 10)
+mul(0, 0)
