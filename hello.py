@@ -1,5 +1,4 @@
-def hello():
-    print("Hello world")
+def func1()
+    return "Func1"
 
-
-hello()
+func1()
