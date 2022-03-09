@@ -13,6 +13,15 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+      - name: Get tag name from ref
+        shell: bash
+        run: echo "::set-output name=tag::${GITHUB_REF#refs/tags/}"
+        id: get_tag
+      - name: Create tag in public repository
+        run: |
+          cd ${{github.workspace}}/another_public_repo
+          git tag ${{ steps.get_tag.outputs.tag }}
+          git push --tags --porcelain
       - name: Create Release
         id: create_release
         uses: actions/create-release@v1
@@ -27,3 +36,5 @@ jobs:
             - Second Change
           draft: false
           prerelease: false
+
+
