@@ -12,6 +12,7 @@ nav:
   - Deployment: deployment.md
   - Release notes: release_notes.md
   - Commands: cmdz.md
+  - CICD: cicd.md
   
 # Theme
 theme:
