@@ -6,6 +6,9 @@ def sub(a, b):
     return a - b
 
 
-add(10, 10)
+def mul(a, b):
+    return a * b
+
+
 sub(10, 10)
 mul(0, 0)
