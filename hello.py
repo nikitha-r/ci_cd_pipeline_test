@@ -1,5 +1,5 @@
-def func1()
-    return "Func1"
+def new_func())
+    return "New func"
 
 
-func1()
+new_func()
