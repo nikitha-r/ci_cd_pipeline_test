@@ -1,0 +1,27 @@
+{
+  "changelog_type": "commit_message",
+  "header_prefix": "Version:",
+  "commit_changelog": true,
+  "comment_changelog": true,
+  "include_unlabeled_changes": true,
+  "unlabeled_group_title": "Unlabeled Changes",
+  "pull_request_title_regex": "^feat",
+  "group_config": [
+    {
+      "title": "Bug Fixes",
+      "labels": ["bug", "bugfix", "fix", "build", "ci", "revert"]
+    },
+    {
+      "title": "Code Improvements",
+      "labels": ["improvements", "enhancement", "style", "refactor", "perf", "test"]
+    },
+    {
+      "title": "New Features",
+      "labels": ["feat"]
+    },
+    {
+      "title": "Documentation Updates",
+      "labels": ["docs", "documentation", "doc"]
+    }
+  ]
+}

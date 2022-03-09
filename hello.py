@@ -1,10 +1,14 @@
-def new_func())
-    return "New func"
+def add(a, b):
+    return a + b
 
 
-def hello1():
-    print("Hello world")
+def sub(a, b):
+    return a - b
 
 
-hello()
-hello1()
+def mul(a, b):
+    return a * b
+
+
+add(10, 10)
+sub(10, 10)

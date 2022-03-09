@@ -161,3 +161,23 @@ https://docs.microsoft.com/en-us/azure/app-service/faq-app-service-linux#multi-c
 https://github.com/nikitha-r/ci_cd_pipeline_test.git
 git push https://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@github.com/nikitha-r/ci_cd_pipeline_test.git
 ```
+
+## Git
+### create a new repository on the command line
+```bash
+echo "# classic_app" >> README.md
+git init
+git add README.md
+git commit -m "first commit"
+git branch -M main
+git remote add origin https://github.com/nikitha-r/classic_app.git
+git push -u origin main
+```
+
+### push an existing repository from the command line
+
+```bash
+git remote add origin https://github.com/nikitha-r/classic_app.git
+git branch -M main
+git push -u origin main
+```
