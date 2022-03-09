@@ -1,21 +1,5 @@
-def hello():
-    print("Hello world")
+def func1()
+    return "Func1"
 
 
-def releasedraft():
-    print("releasedraft")
-
-
-def add():
-    print("Add")
-
-
-
-def sub():
-    print("sub")
-
-
-hello()
-releasedraft()
-add()
-sub()
+func1()
