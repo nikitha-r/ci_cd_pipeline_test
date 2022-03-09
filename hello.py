@@ -1,10 +1,4 @@
-def new_func())
-    return "New func"
+def add(a,b)
+    return a+b
 
-
-def hello1():
-    print("Hello world")
-
-
-hello()
-hello1()
+add(10,10)
