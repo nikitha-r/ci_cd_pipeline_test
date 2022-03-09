@@ -10,5 +10,4 @@ def mul(a, b):
     return a * b
 
 
-sub(10, 10)
 mul(0, 0)
