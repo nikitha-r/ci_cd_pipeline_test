@@ -1,4 +1,5 @@
 def mul(a, b):
+    # Add
     return a * b
 
 
