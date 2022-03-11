@@ -1,16 +1,3 @@
-name: Deploy docs to the wiki
-on:
-  workflow_dispatch:
-jobs:
-  publish_wiki:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Build and Deploy MkDocs
-    - uses: mhausenblas/mkdocs-deploy-gh-pages@1.24
-      run: |
-        mkdocs build
-        mkdocs serve
-
 name: Publish docs via GitHub Pages
 on:
   workflow_dispatch:
