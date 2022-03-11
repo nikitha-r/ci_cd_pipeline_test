@@ -17,6 +17,7 @@ kubectl describe pod scaledjob_name
 kubectl logs pod/servicebus-queue-job-rkgpw-rb4jp
 kubectl edit secrets servicebus-job-secret
 kubectl get scaledjobs --all-namespaces
+kubectl apply -f k8s/deploy.yaml
 ```
 
 ## Data IO Library 

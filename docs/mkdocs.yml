@@ -13,6 +13,7 @@ nav:
   - Release notes: release_notes.md
   - Commands: cmdz.md
   - CICD: cicd.md
+  - last: MMM.md
   
 # Theme
 theme:
