@@ -11,6 +11,7 @@ nav:
   - Development: development.md
   - Deployment: deployment.md
   - Release notes: release_notes.md
+  - Test: test.md
   - Commands: cmdz.md
   - CICD: cicd.md
   - last: MMM.md
