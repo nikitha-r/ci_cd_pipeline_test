@@ -5,6 +5,7 @@ def mul(a, b):
     # fix
     # fix
     # fix
+    # doc
     return a * b
 
 
