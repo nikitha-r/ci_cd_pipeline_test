@@ -20,10 +20,8 @@ jobs:
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Build docs
       run: |
-        pwd
+        cd docs
         ls
-        cd pwd/docs
-        pwd
         mkdocs build
     - name: Deploy docs
       run: |
