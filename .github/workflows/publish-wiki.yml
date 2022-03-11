@@ -21,8 +21,8 @@ jobs:
     - name: Build docs
       run: |
         pwd
-        cd ..
-        cd docs
+        ls
+        cd pwd/docs
         pwd
         mkdocs build
     - name: Deploy docs
