@@ -1,0 +1,385 @@
+name: PR Validation
+env:
+  PYTHON_VERSION: '3.8'
+  ACR_NAME: mroi
+  TEAM: ca
+  PRODUCT: gra
+  COMPONENT: be
+  COMPONENT_TYPE: api
+  IMAGE_NAME: gra
+  DEPLOYMENT_TYPE: DOCKER_COMPOSE
+  WIKI_CONTAINER_NAME: grabackendwikidata
+  DB_CONTAINER_NAME: grabackendwikidata
+  DATA_CONTAINER_NAME: grabackendwikidata
+  DB_TYPE: ''
+  PARENT_REPOSITORY: 'ab-inbev-analytics/mt-gra-app'
+  CHECKOUT_BRANCH: ${{ github.ref }}
+  PR_AGAINST_BRANCH: ${{ github.ref }}
+  OWNER: 'ab-inbev-analytics'
+on:
+  pull_request:
+    branches:
+      - develop
+    types: [opened, synchronize, reopened]
+
+jobs:
+  # Currently deactivating this pipeline because its the affecting the
+  # Sql raw queries in all the .py files 
+  # auto-lint:
+  #   runs-on: ubuntu-latest
+  #   name: Autolint code with black & oitnb
+  #   steps:
+  #     - name: Checkout code from remote origin.
+  #       uses: actions/checkout@v2
+  #     - name: Set up Python 3.8
+  #       uses: actions/setup-python@v2
+  #       with:
+  #         python-version: '3.8'
+  #         architecture: 'x64'
+  #     - name: Install Python dependencies
+  #       run: pip install black mypy oitnb
+  #     - uses: wearerequired/lint-action@v1
+  #       with:
+  #         github_token: ${{ secrets.GITHUB_TOKEN }}
+  #         black: true
+  #         oitnb: true
+  #         auto_fix: true
+  wiki-publish:
+    name: Publish project wiki in GitHub pages
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-python@v2
+        with:
+          python-version: 3.8
+      - run: pip install mkdocs-material pymdown-extensions markdown mkdocs-pdf-export-plugin mkdocs-minify-plugin mkdocs-git-revision-date-localized-plugin
+      - name: Create env file
+        run: |
+          pip install azure-storage-blob loguru typer typer-cli python-dotenv
+          cd wiki
+          cat << EOF > .env
+          AZURE_STORAGE_CONTAINER=${{ env.WIKI_CONTAINER_NAME }}
+          AZURE_STORAGE_CONNECTION_STRING=${{ secrets.AZURE_STORAGE_CONNECTION_STRING }}
+          EOF
+      - name: Compress and upload
+        run: |
+          cd wiki
+          typer get_data_app.py run compress_all
+          typer get_data_app.py run upload_all
+      - name: Download and uncompress
+        run: |
+          cd wiki
+          typer get_data_app.py run download_all
+          typer get_data_app.py run uncompress_all
+      - name: Build and deployment
+        run: |
+          cd wiki/wiki
+          ls
+          mkdocs build
+          mkdocs gh-deploy --force
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: wiki
+          path: '**/*.md'
+
+  branch-name-validator:
+    runs-on: ubuntu-latest
+    name: Branch Name validator
+    steps:
+      - uses: AlbertHernandez/branch-name-action@v1.0.2
+        with:
+          branch_pattern: 'feat|fix|docs|style|docs|refactor|perf|test|build|ci|chore|revert'
+          comment_for_invalid_branch_name: 'Please correct branch name!'
+          fail_if_invalid_branch_name: 'true'
+          ignore_branch_pattern: 'master|develop|staging'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  pr-labeler:
+    runs-on: ubuntu-latest
+    name: PR label validator
+    steps:
+      - uses: TimonVS/pr-labeler-action@v3
+        with:
+          configuration-path: .github/pr-validator.yml # optional, .github/pr-labeler.yml is the default value
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  pr-title-validator:
+    name: PR title validator
+    runs-on: ubuntu-latest
+    steps:
+      - uses: amannn/action-semantic-pull-request@v3.5.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          types: |
+            feat,
+            fix,
+            docs,
+            style,
+            refactor,
+            perf,
+            test,
+            build,
+            ci,
+            chore,
+            revert
+          requireScope: false
+          wip: false
+          validateSingleCommit: false
+  qaqc-checks-pylint:
+    name: Run QA-QC checks with pylint
+    # needs: [auto-lint, pr-title-validator, pr-labeler, branch-name-validator]
+    needs: [pr-title-validator, pr-labeler, branch-name-validator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code from remote origin.
+        uses: actions/checkout@v2
+      - name: Setup python version
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: 'x64'
+      - name: Generate logs for reporting using pylint.
+        run: |
+          pip install pylint
+          pylint app -r n --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" --exit-zero > pylint.log
+      - name: Upload linting errors to to GitHub packages.
+        uses: actions/upload-artifact@v2
+        with:
+          name: linting-reports
+          path: pylint.log
+          retention-days: 5
+  qaqc-checks-flake8:
+    name: Run QA-QC checks with flake8
+    # needs: [auto-lint, pr-title-validator, pr-labeler, branch-name-validator]
+    needs: [pr-title-validator, pr-labeler, branch-name-validator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code from remote origin.
+        uses: actions/checkout@v2
+      - name: Setup python version
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: 'x64'
+      - name: Check linting using flake8 and generate report.
+        run: |
+          pip install flake8
+          flake8 --exit-zero --output-file=flake8.txt .
+      - name: Upload flake8 errors to to GitHub packages.
+        uses: actions/upload-artifact@v2
+        with:
+          name: flake8-reports
+          path: flake8.txt
+  qaqc-checks-bandit:
+    name: Run QA-QC checks with Bandit
+    # needs: [auto-lint, pr-title-validator, pr-labeler, branch-name-validator]
+    needs: [pr-title-validator, pr-labeler, branch-name-validator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code from remote origin.
+        uses: actions/checkout@v2
+      - name: Setup python version
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: 'x64'
+      - name: Check linting using bandit & generate report.
+        run: |
+          pip install bandit
+          bandit --exit-zero --format json --output bandit-report.json --recursive .
+      - name: Upload bandit errors to to GitHub packages.
+        uses: actions/upload-artifact@v2
+        with:
+          name: bandit-reports
+          path: bandit-report.json
+          retention-days: 5
+  qaqc-checks-snyk-python:
+    name: Run QA-QC checks with snyk for python code
+    # needs: [auto-lint, pr-title-validator, pr-labeler, branch-name-validator]
+    needs: [pr-title-validator, pr-labeler, branch-name-validator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout code from remote origin.
+        uses: actions/checkout@v2
+      - name: Setup python version
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: 'x64'
+      - name: Run Snyk to check for vulnerabilities in python code
+        uses: snyk/actions/python-3.8@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+           command: test
+           args: --debug --org=${{ secrets.SNYK_ORGID }} --project-name=${{github.repository}} --file=/github/workspace/requirements.txt --json-file-output=snyk.json --skip-unresolved=true
+      - name: Upload snyk errors to to GitHub packages.
+        uses: actions/upload-artifact@v2
+        continue-on-error: true
+        with:
+          name: snyk-reports
+          path: snyk.json
+          retention-days: 5
+  unit-tests-pytest:
+    name: Run unit tests with pytest
+    # needs: [auto-lint, pr-title-validator, pr-labeler, branch-name-validator]
+    needs: [pr-title-validator, pr-labeler, branch-name-validator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Install system level libraries
+        run: |
+          sudo apt-get update
+          sudo apt-get -y install libpq-dev gcc
+      - name: Checkout code from remote origin.
+        uses: actions/checkout@v2
+      - name: Setup python version
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: 'x64'
+      - name: Create cache depending on requirements file.
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: ${{ env.pythonLocation }}
+          key: ${{ env.pythonLocation }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ env.pythonLocation }}-pip-
+      - name: Install dependencies & download data.
+        if: steps.cache.outputs.cache-hit != 'false' # Need to change later
+        run: |
+          pip install --upgrade pip
+          pip install setuptools wheel twine
+          pip install -r requirements.txt
+          pip install PyJWT
+          pip install coverage
+      - name: Run pytest & generate test coverage report (unit tests).
+        run: |
+          python -m coverage run -m pytest
+          python -m coverage xml
+      - name: Run pytest & generate test coverage report (unit tests).
+        run: |
+          coverage run -m pytest
+          coverage xml
+      - name: Upload test coverage report generated for unit tests using pytest to GitHub packages.
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage
+          path: coverage.xml
+          retention-days: 5
+  qa-qc-report-publish:
+    name: Publish QA/QC report
+    # needs: [unit-tests-pytest,qaqc-checks-bandit,qaqc-checks-flake8, qaqc-checks-pylint, qaqc-checks-snyk-python, auto-lint, pr-title-validator, pr-labeler, branch-name-validator]
+    needs: [unit-tests-pytest,qaqc-checks-bandit,qaqc-checks-flake8, qaqc-checks-pylint, qaqc-checks-snyk-python, pr-title-validator, pr-labeler, branch-name-validator]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v2
+      - name: (step 2) Get docker version from VERSION file
+        id: getversion
+        run:  |
+          pip install toml-cli
+          RV=$(toml get --toml-path pyproject.toml tool.commitizen.version)
+          VERSION="v${RV}"
+          echo "::set-output name=version::${VERSION}"
+          echo "$VERSION"
+      - name: Download all the reports generated in previous steps
+        uses: actions/download-artifact@v2
+      - name: Run Snyk to check for vulnerabilities - Monitor
+        uses: snyk/actions/python-3.8@master
+        continue-on-error: true
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+           command: monitor
+           args: --debug --org=${{ secrets.SNYK_ORGID }} --project-name=${{github.repository}} --file=/github/workspace/requirements.txt --skip-unresolved=true
+      - name: Checking any secret is present in code base using gitleaks
+        uses: zricethezav/gitleaks-action@master
+        continue-on-error: true
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        continue-on-error: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        with:
+          args: >
+            -Dsonar.organization=ab-inbev-analytics
+            -Dsonar.projectKey=ab-inbev-analytics_mt-gra-be-api
+            -Dsonar.sources=.
+            -Dsonar.dynamicAnalysis=reuseReports
+            -Dsonar.python.coverage.reportPaths=coverage/coverage.xml
+            -Dsonar.python.pylint.reportPaths=linting-reports/pylint.log
+            -Dsonar.python.bandit.reportPaths=bandit-reports/bandit-report.json
+            -Dsonar.python.flake8.reportPaths=flake8-reports/flake8.txt
+            -Dsonar.python.version=3.8
+            -Dsonar.exclusions=**/venv/**
+            -Dsonar.sourceEncoding=UTF-8
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v2
+        with:
+          name: python-app
+          path:
+            '**/*.py'
+          retention-days: 5
+      - name: 'Checkout GitHub Action'
+        uses: actions/checkout@main
+      - name: 'Login via Azure CLI'
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - name: Get docker image version
+        id: getbuildversion
+        run:  |
+          MAJOR=$(cat VERSION | cut -d . -f 1)
+          MINOR=$(cat VERSION | cut -d . -f 2)
+          PATCH=$(cat VERSION | cut -d . -f 3)
+          VERSION="v${MAJOR}.${MINOR}.${PATCH}"
+          echo "::set-output name=version::${VERSION}"
+      - name: 'Azure Key Vaults'
+        uses: Azure/get-keyvault-secrets@v1
+        with:
+          keyvault: "abi-mt-mroi-gb-dev-akv"
+          secrets: 'acr-mt-mroi-dev-spn-clientid, acr-mt-mroi-dev-spn-clientsecret'
+        id: myGetSecretAction
+      - name: 'Build  image'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ steps.myGetSecretAction.outputs.acr-mt-mroi-dev-spn-clientid }}
+          password: ${{ steps.myGetSecretAction.outputs.acr-mt-mroi-dev-spn-clientsecret }}
+      - run: |
+          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_NAME }}:${{ steps.getbuildversion.outputs.version }}
+          docker build . -t ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_NAME }}:latest
+      - name: Run Snyk to check Docker image for vulnerabilities
+        continue-on-error: true
+        uses: snyk/actions/docker@master
+        env:
+          SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
+        with:
+          image: ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ env.IMAGE_NAME }}:${{ steps.getbuildversion.outputs.version }}
+          args: --file=Dockerfile
+          command: monitor
+      - name: 'Push image'
+        uses: azure/docker-login@v1
+        with:
+          login-server: ${{ secrets.REGISTRY_LOGIN_SERVER }}
+          username: ${{ steps.myGetSecretAction.outputs.acr-mt-mroi-dev-spn-clientid }}
+          password: ${{ steps.myGetSecretAction.outputs.acr-mt-mroi-dev-spn-clientsecret }}
+      - run: |
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_NAME }}:${{ steps.getbuildversion.outputs.version }}
+          docker push ${{ secrets.REGISTRY_LOGIN_SERVER }}/${{ secrets.IMAGE_NAME }}:latest
+      - name: Upload result to GitHub Code Scanning
+        continue-on-error: true
+        uses: github/codeql-action/upload-sarif@v1
+        with:
+          sarif_file: snyk.sarif

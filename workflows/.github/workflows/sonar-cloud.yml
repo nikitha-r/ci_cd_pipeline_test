@@ -1,0 +1,137 @@
+name: Sonar Cloud
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+      types: [opened, synchronize, reopened]
+env:
+  PYTHON_VERSION: '3.8'
+jobs:
+  qaqc-checks-pylint:
+    name: Run QA-QC checks with PyLint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code from remote origin.
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Setup python version
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: 'x64'
+      - name: Generate logs for reporting using pylint.
+        run: |
+          pip install pylint
+          pylint app -r n --msg-template="{path}:{line}: [{msg_id}({symbol}), {obj}] {msg}" --exit-zero > pylint.log
+      - name: Upload linting errors to to GitHub packages
+        uses: actions/upload-artifact@v2
+        with:
+          name: linting-reports
+          path: pylint.log
+          retention-days: 5
+  qaqc-checks-flake8:
+    name: Run QA-QC checks with flake8
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code from remote origin.
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Setup python version
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: 'x64'
+      - name: Check linting using flake8 & generate report
+        run: |
+          pip install flake8
+          flake8 --exit-zero --output-file=flake8.txt .
+      - name: Upload flake8 errors to to GitHub packages.
+        uses: actions/upload-artifact@v2
+        with:
+          name: flake8-reports
+          path: flake8.txt
+  qaqc-checks-bandit:
+    name: Run QA-QC checks with Bandit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code from remote origin
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Setup python version
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: 'x64'
+      - name: Check linting using bandit & generate report
+        run: |
+          pip install bandit
+          bandit --exit-zero --format json --output bandit-report.json --recursive .
+      - name: Upload bandit errors to to GitHub packages.
+        uses: actions/upload-artifact@v2
+        with:
+          name: bandit-reports
+          path: bandit-report.json
+          retention-days: 5
+  unit-tests-pytest:
+    name: Run unit tests with pytest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code from remote origin.
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Setup python version
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.8'
+          architecture: 'x64'
+      - name: Create cache depending on requirements file
+        uses: actions/cache@v2
+        id: cache
+        with:
+          path: ${{ env.pythonLocation }}
+          key: ${{ env.pythonLocation }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ env.pythonLocation }}-pip-
+      - name: Install dependencies & download data.
+        if: steps.cache.outputs.cache-hit != 'false' # Need to change later
+        run: |
+          pip install --upgrade pip
+          pip install pytest coverage coverage-badge pytest-html pytest-cov
+      - name: Run pytest & generate test coverage report (unit tests).
+        run: |
+          coverage run -m pytest
+          coverage xml
+      - name: Upload test coverage report generated for unit tests using pytest to GitHub packages.
+        uses: actions/upload-artifact@v2
+        with:
+          name: coverage
+          path: coverage.xml
+          retention-days: 5
+  qa-qc-report-publish:
+    name: Publish QA/QC report
+    needs: [unit-tests-pytest, qaqc-checks-bandit, qaqc-checks-flake8, qaqc-checks-pylint]
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - name: Checkout code from remote origin.
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - uses: Azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+      - uses: Azure/get-keyvault-secrets@v1
+        with:
+          keyvault: "abi-mt-mroi-gb-dev-akv"
+          secrets: 'mt-sonar-integration-pk'
+        id: myGetSecretAction
+      - name: SonarCloud Scan
+        uses: SonarSource/sonarcloud-github-action@master
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          SONAR_TOKEN: ${{ steps.myGetSecretAction.outputs.mt-sonar-integration-pk }}
