@@ -1,0 +1,35 @@
+name: Docker build and publish pipeline (working)
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - develop
+  pull_request:
+    branches:
+      - develop
+env:
+  ACR_NAME: abimtmroigbdevacr
+  DOCKER_IMAGE: mt-gra-be-api
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        fetch-depth: 0
+    - uses: Azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    - uses: Azure/get-keyvault-secrets@v1
+      with:
+        keyvault: "abi-mt-mroi-gb-dev-akv"
+        secrets: 'acr-mt-mroi-dev-spn-clientid, acr-mt-mroi-dev-spn-clientsecret'
+      id: myGetSecretAction
+    - uses: Azure/docker-login@v1
+      with:
+        login-server: abimtmroigbdevacr.azurecr.io
+        username: ${{ steps.myGetSecretAction.outputs.acr-mt-mroi-dev-spn-clientid }}
+        password: ${{ steps.myGetSecretAction.outputs.acr-mt-mroi-dev-spn-clientsecret }}
+    - run: |
+        docker build . -t $ACR_NAME.azurecr.io/$DOCKER_IMAGE:latest
+        docker push $ACR_NAME.azurecr.io/$DOCKER_IMAGE:latest
